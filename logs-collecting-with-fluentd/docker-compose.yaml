@@ -1,0 +1,13 @@
+services:
+  file-logger:
+    container_name: file-logger
+    image: ubuntu:24.04
+    working_dir: /app
+    volumes:
+      - ./file-logger:/app:ro
+      - ./file-logger-logs:/var/log/sample
+    command: ["bash", "/app/app.sh"]
+    environment:
+      LOG_FILE: /var/log/sample/app.log
+      LOG_INTERVAL_SEC: "5"
+      LOG_LEVELS: "INFO DEBUG ERROR"
