@@ -22,42 +22,68 @@ solved-exercises/
 - Each `exerciseXX` folder contains its own Terraform configuration.
 
 ### logs-collecting-with-fluentd
-This sample demonstrates using Docker Compose with a Bash script logger and Fluentd to collect and filter logs.
+This sample demonstrates using Docker Compose with two Bash script loggers and Fluentd to collect and filter logs.
 
 The directory structure is as follows:
 
 ```
 logs-collecting-with-fluentd/
-├── docker-compose.yaml          # orchestrates services (file-logger and Fluentd)
+├── docker-compose.yaml          # orchestrates services (file-logger-a, file-logger-b, and Fluentd)
 ├── file-logger/
-│   └── app.sh                   # Bash script that generates random log events
+│   └── app.sh                   # Bash script that generates random log events with kubernetes.
 ├── file-logger-logs/
-│   └── app.log                  # log file written by the file-logger container
+│   ├── app-a.log                # log file written by the file-logger-a container
+│   └── app-b.log                # log file written by the file-logger-b container
 ├── fluentd-configurations/
 │   └── fluent.conf              # Fluentd configuration for filtering logs
 └── fluentd-filtered-logs/
-    └── errors                   # folder where filtered ERROR logs are stored (with buffer and meta files)
+    └── merged.log               # merged filtered logs from both loggers (with buffer and meta files)
 ```
 
 The sample works as follows:
 
-- The `file-logger` container runs a Bash script (`app.sh`) that writes random INFO, DEBUG, or ERROR events in JSON format to `file-logger-logs/app.log`.
+- The `file-logger-a` container runs a Bash script (`app.sh`) that writes random INFO, DEBUG, or ERROR events in JSON format to `file-logger-logs/app-a.log` with a simulated `kubernetes.namespace_name` field set to `fnlgr-demo`.
+- The `file-logger-b` container runs a similar Bash script writing to `file-logger-logs/app-b.log` with `kubernetes.namespace_name` set to `statsvc-env5`.
 - Each log event looks like this:
 
   ```json
-  {"timestamp":"2025-09-22T11:38:54Z","level":"INFO","id":"398e6587-808f-4146-8883-495112d68bb8","message":"Heartbeat OK"}
+  {"timestamp":"2025-09-22T11:38:54Z","level":"INFO","kubernetes":{"namespace_name":"fnlgr-demo"},"id":"398e6587-808f-4146-8883-495112d68bb8","message":"Heartbeat OK"}
   ```
 
-- A Fluentd container tails this log file, parses each line as JSON, and filters records by the `level` field.
-- Only `ERROR` events are written to `fluentd-filtered-logs/errors`.
-- The core part of the Fluentd configuration (`fluent.conf`) that performs the error filtering is:
+- A Fluentd container tails both log files, parses each line as JSON, and filters records by:
+  - ERROR events from namespaces matching the pattern `fnlgr-*`
+  - INFO events from the namespace exactly `statsvc-env5`
+- All filtered logs are merged into one file `fluentd-filtered-logs/merged.log`.
+- The core part of the Fluentd configuration (`fluent.conf`) that performs the filtering is:
 
   ```conf
-  <filter app.errors-log>
+  <filter **>
+    @type grep
+    <regexp>
+      key $.kubernetes.namespace_name
+      pattern ^fnlgr-
+    </regexp>
+  </filter>
+  <filter **>
     @type grep
     <regexp>
       key level
       pattern ^ERROR$
+    </regexp>
+  </filter>
+
+  <filter **>
+    @type grep
+    <regexp>
+      key $.kubernetes.namespace_name
+      pattern ^statsvc-env5$
+    </regexp>
+  </filter>
+  <filter **>
+    @type grep
+    <regexp>
+      key level
+      pattern ^INFO$
     </regexp>
   </filter>
   ```
@@ -68,12 +94,12 @@ The sample works as follows:
    ```bash
    docker compose up -d
    ```
-2. Watch log files under `file-logger-logs/app.log`.
-3. View filtered logs under `fluentd-filtered-logs/errors`.
+2. Watch log files under `file-logger-logs/app-a.log` and `file-logger-logs/app-b.log`.
+3. View merged filtered logs under `fluentd-filtered-logs/merged.log`.
 
 #### Notes
 
-- Only `ERROR` events are collected by Fluentd into the filtered logs.
+- Only ERROR events from namespaces matching `fnlgr-*` and INFO events from the namespace `statsvc-env5` are collected by Fluentd into the merged filtered logs.
 - This setup is for demonstration purposes and can be extended for more complex log filtering and processing.
 
 ### exercise02

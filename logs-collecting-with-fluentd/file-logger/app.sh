@@ -40,8 +40,13 @@ while true; do
   esac
 
   # Write JSON line
-  printf '{"timestamp":"%s","level":"%s","id":"%s","message":"%s"}\n' \
-    "$ts" "$level" "$id" "$msg" >> "$LOG_FILE"
+  if [[ -n "${K8S_NAMESPACE:-}" ]]; then
+    printf '{"timestamp":"%s","level":"%s","id":"%s","message":"%s","kubernetes":{"namespace_name":"%s"}}\n' \
+      "$ts" "$level" "$id" "$msg" "$K8S_NAMESPACE" >> "$LOG_FILE"
+  else
+    printf '{"timestamp":"%s","level":"%s","id":"%s","message":"%s"}\n' \
+      "$ts" "$level" "$id" "$msg" >> "$LOG_FILE"
+  fi
 
   sleep "$LOG_INTERVAL_SEC"
 done
