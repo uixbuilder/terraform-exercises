@@ -39,10 +39,32 @@ while true; do
     *)     msg="Sample event";;
   esac
 
-  # Write JSON line
+  # Write JSON line (with optional namespace + annotations)
   if [[ -n "${K8S_NAMESPACE:-}" ]]; then
-    printf '{"timestamp":"%s","level":"%s","id":"%s","message":"%s","kubernetes":{"namespace_name":"%s"}}\n' \
-      "$ts" "$level" "$id" "$msg" "$K8S_NAMESPACE" >> "$LOG_FILE"
+    annotations_json=""
+
+    # Collect annotations from env vars prefixed with K8S_ANNOTATIONS_
+    for var in $(compgen -e | grep '^K8S_ANNOTATIONS_'); do
+      key="${var#K8S_ANNOTATIONS_}"
+      # Normalize key to avoid invalid characters in Fluentd (replace / with _)
+      key_norm=$(echo "$key" | sed 's|/|_|g')
+      value="${!var}"
+      # Escape quotes if needed
+      value_esc=$(printf '%s' "$value" | sed 's/"/\\"/g')
+      if [[ -n "$annotations_json" ]]; then
+        annotations_json="$annotations_json,\"$key_norm\":\"$value_esc\""
+      else
+        annotations_json="\"$key\":\"$value_esc\""
+      fi
+    done
+
+    if [[ -n "$annotations_json" ]]; then
+      printf '{"timestamp":"%s","level":"%s","id":"%s","message":"%s","kubernetes":{"namespace_name":"%s","annotations":{%s}}}\n' \
+        "$ts" "$level" "$id" "$msg" "$K8S_NAMESPACE" "$annotations_json" >> "$LOG_FILE"
+    else
+      printf '{"timestamp":"%s","level":"%s","id":"%s","message":"%s","kubernetes":{"namespace_name":"%s"}}\n' \
+        "$ts" "$level" "$id" "$msg" "$K8S_NAMESPACE" >> "$LOG_FILE"
+    fi
   else
     printf '{"timestamp":"%s","level":"%s","id":"%s","message":"%s"}\n' \
       "$ts" "$level" "$id" "$msg" >> "$LOG_FILE"
