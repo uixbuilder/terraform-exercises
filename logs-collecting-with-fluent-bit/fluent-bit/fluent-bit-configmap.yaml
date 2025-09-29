@@ -18,6 +18,7 @@ data:
 
     @INCLUDE input-kubernetes.conf
     @INCLUDE filter-kubernetes.conf
+    @INCLUDE filter-resultcode.conf
     @INCLUDE output-elasticsearch.conf
 
   input-kubernetes.conf: |
@@ -39,6 +40,21 @@ data:
       K8S-Logging.Parser  On
       K8S-Logging.Exclude On
 
+    # Parse Apache logs into structured fields
+    [FILTER]
+      Name       parser
+      Match      kube.*
+      Key_Name   log
+      Parser     apache
+      Reserve_Data On
+
+  filter-resultcode.conf: |
+    [FILTER]
+      Name        lua
+      Match       kube.*
+      script      resultCodeFilter.lua
+      call        filter_by_annotation
+
   output-elasticsearch.conf: |
     [OUTPUT]
       Name            es
@@ -53,3 +69,24 @@ data:
   
   parsers.conf: |
     [PARSER]
+      Name   apache
+      Format regex
+      Regex  ^(?<client_ip>\d+\.\d+\.\d+\.\d+) - - \[(?<time>[^\]]*)\] "(?<method>[A-Z]+) (?<path>[^ ]*) HTTP/(?<http_version>[^"]+)" (?<status>[0-9]+) (?<size>[0-9]+)
+      Time_Key   time
+      Time_Format %d/%b/%Y:%H:%M:%S %z
+
+  resultCodeFilter.lua: |
+    function filter_by_annotation(tag, ts, record)
+        local status = record["status"]
+        if record["kubernetes"] ~= nil and record["kubernetes"]["annotations"] ~= nil then
+            local annotations = record["kubernetes"]["annotations"]
+            local filterSpec = annotations["fluentbit.io/resultCodeFilter"]
+            if filterSpec ~= nil and status ~= nil then
+                local statusStr = tostring(status)
+                if string.find("," .. filterSpec .. ",", "," .. statusStr .. ",") then
+                    return 1, record  -- keep log
+                end
+            end
+        end
+        return -1, record  -- drop otherwise
+    end
