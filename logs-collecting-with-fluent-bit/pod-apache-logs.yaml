@@ -6,7 +6,7 @@ metadata:
     app: apache-logs
   annotations:
     fluentbit.io/parser: apache
-    fluentbit.io/resultCodeFilter: "200,500"
+    customFilter/resultCode: "200,500"
 spec:
   containers:
     - name: apache

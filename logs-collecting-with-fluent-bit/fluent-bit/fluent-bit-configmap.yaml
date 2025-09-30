@@ -18,6 +18,7 @@ data:
 
     @INCLUDE input-kubernetes.conf
     @INCLUDE filter-kubernetes.conf
+    # ensure parsing first, then lua filter
     @INCLUDE filter-resultcode.conf
     @INCLUDE output-elasticsearch.conf
 
@@ -26,19 +27,20 @@ data:
       Name              tail
       Tag               kube.*
       Path              /var/log/containers/*.log
-      Parser            docker
+      multiline.parser  docker, cri
       Mem_Buf_Limit     5MB
       Skip_Long_Lines   On
       Refresh_Interval  10
-
+      
   filter-kubernetes.conf: |
     [FILTER]
-      Name                kubernetes
-      Match               kube.*
-      Kube_URL            https://kubernetes.default.svc.cluster.local:443
-      Merge_Log           On
-      K8S-Logging.Parser  On
+      Name kubernetes
+      Match kube.*
+      Merge_Log On
+      Keep_Log Off
+      K8S-Logging.Parser On
       K8S-Logging.Exclude On
+      Use_Kubelet false
 
     # Parse Apache logs into structured fields
     [FILTER]
@@ -46,7 +48,6 @@ data:
       Match      kube.*
       Key_Name   log
       Parser     apache
-      Reserve_Data On
 
   filter-resultcode.conf: |
     [FILTER]
@@ -59,11 +60,11 @@ data:
     [OUTPUT]
       Name            es
       Match           *
-      Host            10.105.123.210
+      Host            elasticsearch.demo-elastic.svc.cluster.local
       Port            9200
       HTTP_User       elastic
-      HTTP_Passwd     NxMBB0aBo2dIagCsAX5S
-      Logstash_Format On
+      HTTP_Passwd     ${ELASTICSEARCH_PASSWORD}
+      Index           fluentbit
       Retry_Limit     False
       Buffer_Size     False
   
@@ -78,15 +79,19 @@ data:
   resultCodeFilter.lua: |
     function filter_by_annotation(tag, ts, record)
         local status = record["status"]
-        if record["kubernetes"] ~= nil and record["kubernetes"]["annotations"] ~= nil then
-            local annotations = record["kubernetes"]["annotations"]
-            local filterSpec = annotations["fluentbit.io/resultCodeFilter"]
-            if filterSpec ~= nil and status ~= nil then
-                local statusStr = tostring(status)
-                if string.find("," .. filterSpec .. ",", "," .. statusStr .. ",") then
-                    return 1, record  -- keep log
+        local filter = nil
+        local k8s = record["kubernetes"]
+
+        if k8s ~= nil and k8s["annotations"] ~= nil then
+            filter = k8s["annotations"]["customFilter/resultCode"]
+        end
+
+        if status ~= nil and filter ~= nil then
+            for code in string.gmatch(filter, '([^,]+)') do
+                if tostring(status) == code then
+                    return 0, record  -- keep log
                 end
             end
         end
-        return -1, record  -- drop otherwise
+        return -1, record  -- drop if not matching
     end
