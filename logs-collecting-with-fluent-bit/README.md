@@ -219,6 +219,7 @@ Below is a screenshot of logs successfully ingested and displayed inside Kibana:
 
 ## Resources
 
+- [RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 - [Fluent Bit Documentation](https://docs.fluentbit.io/)
 - [Elasticsearch Documentation](https://www.elastic.co/guide/en/elasticsearch/reference/index.html)
 - [Kibana Documentation](https://www.elastic.co/guide/en/kibana/current/index.html)
