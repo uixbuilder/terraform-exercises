@@ -74,7 +74,7 @@ data:
       Format regex
       Regex  ^(?<client_ip>\d+\.\d+\.\d+\.\d+) - - \[(?<time>[^\]]*)\] "(?<method>[A-Z]+) (?<path>[^ ]*) HTTP/(?<http_version>[^"]+)" (?<status>[0-9]+) (?<size>[0-9]+)
       Time_Key   time
-      Time_Format %d/%b/%Y:%H:%M:%S %z
+      Time_Format %d/%b/%Y:%e:%M:%S %z
 
   resultCodeFilter.lua: |
     function filter_by_annotation(tag, ts, record)
