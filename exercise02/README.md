@@ -67,3 +67,4 @@ graph TD
 - Ensure AWS CLI is configured and working:
   ```bash
   aws sts get-caller-identity
+  ```
