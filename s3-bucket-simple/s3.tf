@@ -1,3 +1,4 @@
+# This s3.tf file is part of the s3-bucket-simple example.
 resource "random_id" "bucket_suffix" {
   byte_length = 6
 }
