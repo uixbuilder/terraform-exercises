@@ -4,6 +4,9 @@ This directory contains my solutions to Terraform exercises as part of my learni
 
 ## Available Samples
 
+- [terraform-cfn-repo](./terraform-cfn-repro/README.md)
+  Reproduces a scenario where Terraform state is missing resources that were created and managed by AWS CloudFormation.
+
 - [logs-collecting-with-fluentd](./logs-collecting-with-fluentd/README.md)
   Demonstrates log collection with Fluentd using Kubernetes-style annotations for dynamic filtering.
 
