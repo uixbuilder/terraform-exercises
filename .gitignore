@@ -3,6 +3,7 @@
 
 # Local .terraform directories
 **/.terraform/*
+**/.terragrunt-cache/*
 
 # Terraform state files
 *.tfstate
