@@ -39,14 +39,14 @@ Outputs:
 variable "stack_name" {
   description = "The name of the CloudFormation stack."
   type        = string
-  default     = "terraform-cfn-repro-stack"
+  default     = "terraform-cfn-repro-stack-unique-name"
 }
 
 variable "bucket_name" {
   description = "The name of the S3 bucket to be created by the CloudFormation stack."
   type        = string
   # NOTE: Make sure this bucket name is unique!
-  default     = "terraform-cfn-repro-bucket-UNIQUE-NAME"
+  default     = "terraform-cfn-repro-bucket-unique-name"
 }
 ```
 
@@ -63,7 +63,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-1" # Or your preferred region
+  region = "eu-west-1"
 }
 
 resource "aws_cloudformation_stack" "repro_stack" {
@@ -79,7 +79,7 @@ resource "aws_cloudformation_stack" "repro_stack" {
 
 ## Steps to Reproduce
 
-First, ensure you have set your AWS credentials in your environment. Remember to replace `terraform-cfn-repro-bucket-UNIQUE-NAME` with a globally unique bucket name in `variables.tf`.
+First, ensure you have set your AWS credentials in your environment. Remember to replace `terraform-cfn-repro-bucket-unique-name` with a globally unique bucket name in `variables.tf`.
 
 **Step 1: Manually Create the Stack**
 
@@ -87,9 +87,9 @@ Create the CloudFormation stack directly using the AWS CLI. This simulates a pre
 
 ```bash
 aws cloudformation create-stack \
-  --stack-name terraform-cfn-repro-stack \
+  --stack-name terraform-cfn-repro-stack-unique-name \
   --template-body file://template.yaml \
-  --parameters ParameterKey=S3BucketName,ParameterValue=terraform-cfn-repro-bucket-UNIQUE-NAME
+  --parameters ParameterKey=S3BucketName,ParameterValue=terraform-cfn-repro-bucket-unique-name
 ```
 
 Wait for the stack to be created successfully.
@@ -107,7 +107,7 @@ Terraform will propose creating a new stack, because it doesn't know the existin
 
 ```
 + resource "aws_cloudformation_stack" "repro_stack" {
-    + name           = "terraform-cfn-repro-stack"
+    + name           = "terraform-cfn-repro-stack-unique-name"
     + template_body  = ...
     ...
   }
@@ -118,19 +118,17 @@ Terraform will propose creating a new stack, because it doesn't know the existin
 Use `terraform import` to associate the existing stack with your Terraform resource.
 
 ```bash
-terraform import aws_cloudformation_stack.repro_stack terraform-cfn-repro-stack
+terraform import aws_cloudformation_stack.repro_stack terraform-cfn-repro-stack-unique-name
 ```
 
 **Step 4: Run `terraform plan` Again**
 
-Now that the resource is tracked in the state, running a plan will show no changes.
+Now that the resource is tracked in the state, running a plan will show just template changes.
 
 ```bash
 terraform plan
 ```
 
-```
-No changes. Your infrastructure matches the configuration.
-```
+![Changes after import](changes_after_import.png)
 
 Terraform now correctly understands that the stack is already deployed and managed.
