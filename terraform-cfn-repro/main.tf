@@ -8,7 +8,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-1" # Or your preferred region
+  region = "eu-west-1"
 }
 
 resource "aws_cloudformation_stack" "repro_stack" {
